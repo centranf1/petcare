@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "path": "klinik-hewan"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "klinIk-hewan": true,
+      "kliniksrc": true
+    }
+  }
+}
