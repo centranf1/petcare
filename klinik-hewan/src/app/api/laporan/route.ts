@@ -1,0 +1,27 @@
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
+
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url)
+    const from = url.searchParams.get('from')
+    const to = url.searchParams.get('to')
+    const type = url.searchParams.get('type') || 'monthly'
+
+    // simple aggregation: count appointments by status
+    const where: any = {}
+    if (from) where.createdAt = { gte: new Date(from) }
+    if (to) where.createdAt = { ...(where.createdAt || {}), lte: new Date(to) }
+
+    const counts = await prisma.appointment.groupBy({
+      by: ['status'],
+      where,
+      _count: { status: true },
+    })
+
+    return NextResponse.json({ counts, type })
+  } catch (err) {
+    return NextResponse.json({ message: 'Error generating report' }, { status: 500 })
+  }
+}

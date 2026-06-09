@@ -1,0 +1,40 @@
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
+import bcrypt from 'bcrypt'
+import { getToken } from 'next-auth/jwt'
+
+const createSchema = z.object({ name: z.string(), email: z.string().email(), role: z.enum(['ADMIN','DOKTER','PELANGGAN']), password: z.string().min(6) })
+
+export async function GET(req: Request) {
+  try {
+    const token = await getToken({ req: req as any, secret: process.env.NEXTAUTH_SECRET })
+    if (!token || token.role !== 'ADMIN') return NextResponse.json({ message: 'Unauthorized' }, { status: 403 })
+
+    const url = new URL(req.url)
+    const role = url.searchParams.get('role') as 'ADMIN' | 'DOKTER' | 'PELANGGAN' | undefined
+    const where = role ? { role } : undefined
+    const users = await prisma.user.findMany({ where })
+    return NextResponse.json({ data: users })
+  } catch (err) {
+    return NextResponse.json({ message: 'Error fetching users' }, { status: 500 })
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+    const parsed = createSchema.parse(body)
+    const token = await getToken({ req: req as any, secret: process.env.NEXTAUTH_SECRET })
+    if (parsed.role !== 'PELANGGAN' && (!token || token.role !== 'ADMIN')) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 403 })
+    }
+
+    const salt = await bcrypt.genSalt(10)
+    const hash = await bcrypt.hash(parsed.password, salt)
+    const created = await prisma.user.create({ data: { name: parsed.name, email: parsed.email, role: parsed.role, password: hash } })
+    return NextResponse.json(created, { status: 201 })
+  } catch (err: any) {
+    return NextResponse.json({ message: err.message || 'Invalid input' }, { status: 400 })
+  }
+}

@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(PELANGGAN)
+  phone     String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Hewan     Hewan[]  @relation("OwnerHewan")
+  appointmentsAsPelanggan Appointment[] @relation("PelangganAppointments")
+  appointmentsAsDokter Appointment[] @relation("DokterAppointments")
+  rekamMedis RekamMedis[] @relation("DokterRekamMedis")
+  jadwal JadwalDokter[] @relation("DokterJadwal")
+  sentMessages Pesan[] @relation("SentMessages")
+  receivedMessages Pesan[] @relation("ReceivedMessages")
+  notifikasi Notifikasi[]
+  passwordResets PasswordReset[]
+}
+
+model Hewan {
+  id            String   @id @default(cuid())
+  nama          String
+  jenis         Jenis
+  ras           String?
+  tanggalLahir  DateTime?
+  beratBadan    Float?
+  foto          String?
+  catatanKhusus String?
+  pelangganId   String
+  pelanggan     User     @relation(fields: [pelangganId], references: [id], name: "OwnerHewan")
+  Monitoring    MonitoringHarian[]
+  RekamMedis    RekamMedis[]
+  appointments  Appointment[] @relation("HewanAppointments")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model MonitoringHarian {
+  id            String   @id @default(cuid())
+  hewanId       String
+  hewan         Hewan    @relation(fields: [hewanId], references: [id])
+  tanggal       DateTime
+  beratBadan    Float?
+  suhu          Float?
+  nafsuMakan    NafsuMakan
+  aktivitas     Aktivitas
+  catatanGejala String?
+  createdAt     DateTime @default(now())
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  pelangganId String
+  pelanggan   User     @relation("PelangganAppointments", fields: [pelangganId], references: [id])
+  hewanId     String
+  hewan       Hewan    @relation("HewanAppointments", fields: [hewanId], references: [id])
+  dokterId    String?
+  dokter      User?    @relation("DokterAppointments", fields: [dokterId], references: [id])
+  tanggal     DateTime
+  waktu       String
+  jenis       JenisLayanan
+  keluhan     String?
+  status      AppointmentStatus @default(MENUNGGU)
+  catatanAdmin String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  RekamMedis   RekamMedis?
+  messages     Pesan[]  @relation("AppointmentMessages")
+}
+
+model RekamMedis {
+  id           String   @id @default(cuid())
+  appointmentId String  @unique
+  appointment  Appointment @relation(fields: [appointmentId], references: [id])
+  hewanId      String
+  hewan        Hewan    @relation(fields: [hewanId], references: [id])
+  dokterId     String
+  dokter       User     @relation("DokterRekamMedis", fields: [dokterId], references: [id])
+  tanggalPeriksa DateTime
+  keluhan      String?
+  diagnosis    String?
+  tindakan     String?
+  resep        String?
+  catatanDokter String?
+  lampiran     String[] @default([])
+  createdAt    DateTime @default(now())
+}
+
+model JadwalDokter {
+  id         String   @id @default(cuid())
+  dokterId   String
+  dokter     User     @relation("DokterJadwal", fields: [dokterId], references: [id])
+  hari       Hari
+  jamMulai   String
+  jamSelesai String
+  isAktif    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model Inventory {
+  id         String   @id @default(cuid())
+  namaItem   String
+  kategori   Kategori
+  stok       Int
+  satuan     String
+  harga      Float
+  stokMinimal Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Pesan {
+  id           String   @id @default(cuid())
+  senderId     String
+  sender       User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId   String
+  receiver     User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  appointmentId String?
+  appointment  Appointment? @relation("AppointmentMessages", fields: [appointmentId], references: [id])
+  isi          String
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model Notifikasi {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  judul     String
+  isi       String
+  tipe      NotifikasiTipe
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+
+model KontenLanding {
+  id        String   @id @default(cuid())
+  section   String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Artikel {
+  id         String   @id @default(cuid())
+  judul      String
+  slug       String   @unique
+  konten     String
+  thumbnail  String?
+  isPublished Boolean @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PasswordReset {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  tokenHash  String
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+enum Role {
+  PELANGGAN
+  DOKTER
+  ADMIN
+}
+
+enum Jenis {
+  KUCING
+  ANJING
+  BURUNG
+  KELINCI
+  LAINNYA
+}
+
+enum NafsuMakan {
+  BAIK
+  SEDANG
+  BURUK
+}
+
+enum Aktivitas {
+  AKTIF
+  NORMAL
+  LESU
+}
+
+enum JenisLayanan {
+  PEMERIKSAAN
+  VAKSINASI
+  BEDAH
+  GROOMING
+  DENTAL
+  RAWAT_INAP
+  TELEMEDICINE
+  HOME_VISIT
+}
+
+enum AppointmentStatus {
+  MENUNGGU
+  DIKONFIRMASI
+  SELESAI
+  DIBATALKAN
+}
+
+enum Hari {
+  SENIN
+  SELASA
+  RABU
+  KAMIS
+  JUMAT
+  SABTU
+  MINGGU
+}
+
+enum Kategori {
+  OBAT
+  ALAT
+  KONSUMABLE
+}
+
+enum NotifikasiTipe {
+  INFO
+  PERINGATAN
+  SUKSES
+}
